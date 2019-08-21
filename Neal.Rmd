@@ -1,0 +1,141 @@
+---
+title: "Neal"
+author: "Zhuoqun Wang"
+date: "8/7/2019"
+output: html_document
+---
+# Data
+```{r}
+alpha<-1
+y<-c(-1.48,-1.40,-1.16,-1.08,-1.02,0.14,0.51,0.53,0.78)
+n<-length(y)
+```
+
+# Algorithm 1  
+```{r}
+set.seed(1)
+ITER_MAX<-10000
+theta0<-rnorm(n)
+THETA.gibbs1<-matrix(0,nrow=ITER_MAX,ncol=n)
+THETA.gibbs1[1,]<-theta0
+theta<-theta0
+
+for (iter in 2:ITER_MAX){
+  #print(c("iter=",iter))
+  for (i in 1:n){
+    ###UPDATES
+    #calculate F(yi,thetaj)
+    f<-rep(0,n)
+    for (j in 1:n){
+      if (j !=i){f[j]<-dnorm(y[i],mean=theta[j],sd=0.1)}
+    }
+    #calculate integral_i for r_i
+    I<-10/(sqrt(101*2*pi))*exp(-50*y[i]^2)
+    #calculate 1/b as b.inv (normalizing constant)
+    b.inv<-sum(f)+I
+    q<-f/b.inv
+    r<-I/b.inv
+    ###SAMPLING
+    #step1: decide new or existing
+    new<-rbinom(1,1,r)
+    if (new==1){theta[i]<-rnorm(1,mean=100*y[i]/101,sd=1/sqrt(101))}
+    else{theta[i]<-theta[which(rmultinom(1,1,q)==1)]}
+  }
+  THETA.gibbs1[iter,]<-theta
+}
+par(mfrow=c(3,3))
+plot(THETA.gibbs1[-(1:1000),1],type='l')
+for (t in 2:9){
+  plot(THETA.gibbs1[-(1:1000),t],col=colors()[t],type='l')
+}
+par(mfrow=c(3,3))
+acf(THETA.gibbs1[-(1:1000),1])
+for (t in 2:9){
+  acf(THETA.gibbs1[-(1:1000),t])
+}
+theta.mean<-apply(THETA.gibbs1, 2, function(x){mean(x)})
+print(theta.mean)
+```  
+At least according to the mean of $\theta$'s, algorithm 1 seems to give the "correct" clusters.   
+
+# Algorithm 2  
+```{r}
+set.seed(1)
+ITER_MAX<-10000
+phi0<-c(rnorm(1),rep(0,n-1))
+c0<-rep(1,n) #in the beginning there is only one cluster (is this a reasonable assignment?)
+phi_for_y_0<-rep(phi0[1],n)
+PHI.gibbs2<-matrix(0,nrow=ITER_MAX,ncol=n)# record phi_k instead of phi_y_i
+PHI.gibbs2[1,]<-phi0
+C.gibbs2<-matrix(0,nrow=ITER_MAX,ncol=n)
+C.gibbs2[1,]<-c0
+PHI_for_y_0.gibbs2<-matrix(0,nrow=ITER_MAX,ncol=n)
+PHI_for_y_0.gibbs2[1,]<-phi_for_y_0
+phi<-phi0
+c<-c0
+for (iter in 2:ITER_MAX){
+  #print(c("iter=",iter))
+  # SAMPLE C
+  for (i in 1:n){
+    # calculate a
+    c.distinct<-n+1
+    K<-length(unique(c[-i]))
+    n.other<-rep(0,n)
+    f<-rep(0,n)
+    for (j in 1:n){ #c_j=k <=> sample j in cluster k
+      if (j!=i && sum(c.distinct==c[j])==0){
+        k<-c[j]
+        c.distinct<-c(c.distinct,k)
+        #calculate n_{-i,c_j}
+        n.other[k]<-sum(c[-i]==k)
+        #calculate F(y_i,phi_{c_j})
+        f[k]<-dnorm(y[i],mean=phi[k],sd=0.1)
+      }
+    }
+    Ak<-n.other*f/n
+    I<-10/(sqrt(101*2*pi))*exp(-50*y[i]^2)
+    A0<-I/n
+    A<-c(A0,Ak) # calculate A=a/b, which is $a$ without normalization. Here normalization is not required for multinomial sampling, hence we do not calculate b.
+    # sample from multinomial
+    c[i]<-which(rmultinom(1,1,A)==1)-1
+    #if c_i=0, we set it to a new cluster label: the smallest label that has not appeared yet
+    if (c[i]==0){c[i]<-min(setdiff(as.integer(1:n),intersect(c[-i],(1:n))))}
+  }
+  C.gibbs2[iter,]<-c
+  # SAMPLE PHI_c
+  phi<-rep(0,n)
+  for (k in unique(c)){
+    # calculate posterior distrbution
+    mu0<-0
+    sig02<-1
+    sig12<-0.1
+    sig2<-sig02
+    mu<-mu0
+    for (i in 1:n){
+      if (c[i]==k){
+        mu<-(sig2*y[i]+sig12*mu)/(sig2+sig12)#update posterior mean
+        sig2<-1/(1/sig2+1/sig12)#update posterior variance
+      }
+    }
+    phi[k]<-rnorm(1,mean=mu,sd=sqrt(sig2))
+  }
+  PHI.gibbs2[iter,]<-phi
+  #record phi for each y_i for reference(won't be used in next iteration). phi for y_i is phi_{c_i}
+  for (i in 1:n){
+    PHI_for_y_0.gibbs2[iter,i]<-phi[c[i]]
+  }
+}
+#####PLOTS
+par(mfrow=c(3,3))
+plot(PHI_for_y_0.gibbs2[,1],type='l')
+for (t in 2:9){
+  plot(PHI_for_y_0.gibbs2[,t],type='l',col=colors()[t])
+}
+par(mfrow=c(3,3))
+acf(PHI_for_y_0.gibbs2[,1])
+for (t in 2:9){
+  acf(PHI_for_y_0.gibbs2[,t])
+}
+```  
+  
+According to the plots, it seems that it has good mixing and has converged. The clusters seem "correct"(but unstable?).
