@@ -126,6 +126,9 @@ for (iter in 2:ITER_MAX){
     PHI_for_y_0.gibbs2[iter,i]<-phi[c[i]]
   }
 }
+```  
+Use acf plots to see whether this chain have good mixing.  
+```{r}
 #####PLOTS
 par(mfrow=c(3,3))
 plot(PHI_for_y_0.gibbs2[,1],type='l')
@@ -137,7 +140,10 @@ acf(PHI_for_y_0.gibbs2[,1])
 for (t in 2:9){
   acf(PHI_for_y_0.gibbs2[,t])
 }
+library(coda)
+effectiveSize(PHI_for_y_0.gibbs2[,1])
 ```  
+Why is this effective size same as number of iterations?!!!(The one for algorithm 1 is also large!)
 According to the plots, it seems that it has good mixing and has converged. The clusters seem "correct"(but unstable?).  
 ##### Diagnostics mentioned in STA601 for stationarity: "samples taken in one part of the chain have a similar distribution to samples taken in other parts".
 ```{r}
