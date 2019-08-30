@@ -6,6 +6,7 @@ output: html_document
 ---
 # Data
 ```{r}
+library(latex2exp)
 alpha<-1
 y<-c(-1.48,-1.40,-1.16,-1.08,-1.02,0.14,0.51,0.53,0.78)
 n<-length(y)
@@ -137,5 +138,34 @@ for (t in 2:9){
   acf(PHI_for_y_0.gibbs2[,t])
 }
 ```  
+According to the plots, it seems that it has good mixing and has converged. The clusters seem "correct"(but unstable?).  
+##### Diagnostics mentioned in STA601 for stationarity: "samples taken in one part of the chain have a similar distribution to samples taken in other parts".
+```{r}
+#####diagnostics: stationarity, by comparing whether the joint distribution of (phi of y7,phi of y2) look similar for 8000-9000 and 9000-10000; it's meaningless to look at PHI.gibbs2!
+plot(PHI_for_y_0.gibbs2[8000:9000,7],PHI_for_y_0.gibbs2[8000:9000,2],cex=0.3,xlab = TeX('$\\phi _ \\y_7$'),ylab=TeX('$\\phi _ \\y_2$'))
+points(PHI_for_y_0.gibbs2[9000:10000,7],PHI_for_y_0.gibbs2[9000:10000,2],cex=0.3,col='red')
+legend(-0.2,-0.8,legend=c("8000-9000", "9000-10000"),
+       fill=c("black", "red"), cex=0.8)
+```  
+May has converged. (If the distributions don't look similar, it hasn't converged. But if they're similar, we cannot say whether it has converged!)
   
-According to the plots, it seems that it has good mixing and has converged. The clusters seem "correct"(but unstable?).
+# Algorithm 4 ("no gaps")
+```{r}
+set.seed(1)
+ITER_MAX<-10000
+phi0<-c(rnorm(1),rep(0,n-1))
+c0<-rep(1,n) #in the beginning there is only one cluster (is this a reasonable assignment?)
+PHI.gibbs2<-matrix(0,nrow=ITER_MAX,ncol=n)# record phi_k instead of phi_y_i
+PHI.gibbs2[1,]<-phi0
+C.gibbs2<-matrix(0,nrow=ITER_MAX,ncol=n)
+C.gibbs2[1,]<-c0
+phi<-phi0
+c<-c0
+for (iter in 2:ITER_MAX){
+  for (i in 1:n){
+    if (sum(c==c[i])>1){
+      p.resamp<-rep(0,)
+    }
+  }
+}
+```  
