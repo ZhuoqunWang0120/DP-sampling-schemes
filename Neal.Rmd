@@ -10,6 +10,11 @@ library(latex2exp)
 alpha<-1
 y<-c(-1.48,-1.40,-1.16,-1.08,-1.02,0.14,0.51,0.53,0.78)
 n<-length(y)
+#mode function
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
 ```
 
 # Algorithm 1  
@@ -127,6 +132,31 @@ for (iter in 2:ITER_MAX){
   }
 }
 ```  
+##### Posterior, and diagnostics on whether the result is correct  
+```{r}
+#burn out first 1000
+meanphi.post<-apply(PHI_for_y_0.gibbs2[-(1:1000),],2,function(x){mean(x)})
+phi.posterior<-apply(PHI_for_y_0.gibbs2[-(1:1000),],2,function(x){density(x)})
+modeC.post<-apply(C.gibbs2[-(1:1000),],2,function(x){getmode(x)})
+posterior<-list(datay=y,paraphi=phi.posterior,labelc=modeC.post)
+plot(phi.posterior[[1]],xlim=range(PHI_for_y_0.gibbs2))
+for (t in 2:9){
+  lines(phi.posterior[[t]],col=colors()[t])
+}
+par(mfrow=c(3,3))
+for (l in 1:max(posterior$labelc)){
+  for (i in 1:9){
+    if (posterior$labelc[i]==l){
+      plot(posterior$paraphi[[i]],xlim=range(PHI_for_y_0.gibbs2),main=paste0('posterior density of phi_y_',i),xlab=TeX('$\\phi$'))
+      abline(v=y[i])
+      text(y[i],0,paste0("y",i),col='red')
+      abline(v=mean(y[posterior$labelc==l]),col='blue')
+    }
+  }
+}
+```  
+The posterior density of $\phi$ (estimated by kernel method) looks like normal for every y except y6. Posterior density of $\phi_{y_6}$ is skewed, because $y_6$ is in the middle of the two clusters. The posterior density seems reasonable with density of $\phi$ for each cluster concentrated around the mean of $y$'s in this cluster(marked in blue).
+
 Use acf plots to see whether this chain have good mixing.  
 ```{r}
 #####PLOTS
@@ -152,6 +182,11 @@ plot(PHI_for_y_0.gibbs2[8000:9000,7],PHI_for_y_0.gibbs2[8000:9000,2],cex=0.3,xla
 points(PHI_for_y_0.gibbs2[9000:10000,7],PHI_for_y_0.gibbs2[9000:10000,2],cex=0.3,col='red')
 legend(-0.2,-0.8,legend=c("8000-9000", "9000-10000"),
        fill=c("black", "red"), cex=0.8)
+
+#####diagnostics: stationarity, with boxplot of every 2000 samples(take phi_y_2 for example)
+phiy2.gibbs<-PHI_for_y_0.gibbs2[-(1:1000),2] #burn out the first 1000 ones
+phiy2boxplot<-data.frame(phiy2=phiy2.gibbs,ind=rep(seq_len(10), each=100))
+boxplot(phiy2~ind, data=phiy2boxplot)
 ```  
 May has converged. (If the distributions don't look similar, it hasn't converged. But if they're similar, we cannot say whether it has converged!)
   
