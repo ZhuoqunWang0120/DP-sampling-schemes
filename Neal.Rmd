@@ -132,7 +132,7 @@ for (iter in 2:ITER_MAX){
   }
 }
 ```  
-##### Posterior, and diagnostics on whether the result is correct  
+##### Posterior summaries, and diagnostics on whether the result is correct  
 ```{r}
 #burn out first 1000
 meanphi.post<-apply(PHI_for_y_0.gibbs2[-(1:1000),],2,function(x){mean(x)})
